@@ -16,7 +16,8 @@ class StockDownloader:
         """
         try:
             stock = yf.Ticker(ticker)
-            df = stock.history(period=period, interval=interval, prepost=True)
+            # 關鍵：設定 auto_adjust=False 以獲取原始市價，而非調整後的淨值
+            df = stock.history(period=period, interval=interval, prepost=True, auto_adjust=False)
             if df.empty:
                 print(f"警告：找不到 {ticker} 的資料")
             return df
