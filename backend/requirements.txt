@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+yfinance
+pandas
+numpy
+pandas-ta
+python-dotenv
+mplfinance
+# 預留給機器學習與 LLM
+scikit-learn
+openai

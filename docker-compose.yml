@@ -1,0 +1,24 @@
+services:
+  backend:
+    build: ./backend
+    container_name: stock_backend
+    ports:
+      - "8000:8000"
+    # 核心：將本地 backend 資料夾掛載到容器的 /app
+    volumes:
+      - ./backend:/app
+    environment:
+      - API_AUTH_TOKEN=${API_AUTH_TOKEN}
+
+  frontend:
+    build: ./frontend
+    container_name: stock_frontend
+    ports:
+      - "8501:8501"
+    # 核心：將本地 frontend 資料夾掛載到容器的 /app
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8000

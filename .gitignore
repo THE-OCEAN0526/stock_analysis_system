@@ -1,0 +1,9 @@
+# Python 快取
+__pycache__/
+*.pyc
+
+# 環境變數與虛擬環境
+.env
+
+# Docker 紀錄
+*.log
