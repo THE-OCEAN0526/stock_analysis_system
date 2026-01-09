@@ -5,7 +5,9 @@ import numpy as np
 class IndicatorCalculator:
     @staticmethod
     def add_all_indicators(df: pd.DataFrame, short_p: int = 10, long_p: int = 50) -> pd.DataFrame:
-        if df.empty: return df
+        if df.empty or len(df) < long_p:
+            return df
+        
         df.columns = [col.lower() for col in df.columns]
 
         # 1. 均線與策略

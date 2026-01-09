@@ -9,3 +9,5 @@ mplfinance
 # 預留給機器學習與 LLM
 scikit-learn
 openai
+requests    
+lxml        # 修復抓取清單失敗問題
