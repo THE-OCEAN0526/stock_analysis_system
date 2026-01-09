@@ -63,7 +63,8 @@ res = controller.fetch_stock_data(
     period=p_val,
     interval=i_val,
     short_p=params['short_p'],
-    long_p=params['long_p']
+    long_p=params['long_p'],
+    predict_modes=params['predict_modes']
 )
 
 # E. 繪製內容區塊
@@ -79,7 +80,9 @@ if res:
             show_indicators=params["indicators"],
             show_perf_indicators=params["perf_indicators"],
             period_label=st.session_state.current_period,
-            interval_code=i_val
+            interval_code=i_val,
+            forecast_data=res.get("forecast"),
+            predict_modes=params["predict_modes"]
         )
 
     with col_right:

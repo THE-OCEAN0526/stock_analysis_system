@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 from services.downloader import StockDownloader
 from services.indicators import IndicatorCalculator
 from services.analyzer import PerformanceAnalyzer
+from services.forecaster import StockForecaster
 
 class StockService:
     """
@@ -25,12 +26,15 @@ class StockService:
         period: str = "1y", 
         interval: str = "1d", 
         short_p: int = 10, 
-        long_p: int = 50
+        long_p: int = 50,
+        predict_modes=[]
     ) -> Dict[str, Any]:
+        
         """
         執行完整的股票分析流程
         """
         try:
+            
             # --- 步驟 A：獲取官方日線數據 (用於統計今日與昨收) ---
             df_daily = self.downloader.fetch_data(ticker, period="5d", interval="1d")
             if df_daily.empty:
@@ -79,6 +83,16 @@ class StockService:
             # 計算累積報酬與回撤序列 (用於前端繪圖)
             chart_df = self._add_series_data(chart_df)
 
+
+            forecast_results = {}
+            # 2. 只有在用戶真的想看預測時才進行計算
+            if interval == "1d" and len(chart_df) > 30:
+                if "Prophet 預測" in predict_modes:
+                    forecast_results["prophet"] = StockForecaster.predict_prophet(chart_df)
+                if "ARIMA 預測" in predict_modes:
+                    forecast_results["arima"] = StockForecaster.predict_arima(chart_df)
+
+
             # 處理 JSON 不支援的 NaN 值
             chart_df = chart_df.fillna(0)
 
@@ -88,7 +102,8 @@ class StockService:
                 "reference_price": ref_p,
                 "today_stats": today_stats,
                 "performance": perf,
-                "data": chart_df.to_dict(orient="index")
+                "data": chart_df.to_dict(orient="index"),
+                "forecast": forecast_results # 回傳預測結果
             }
 
         except Exception as e:

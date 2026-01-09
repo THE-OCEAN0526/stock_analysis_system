@@ -61,7 +61,7 @@ class ChartView:
             (s1 if i % 2 == 0 else s2).markdown(f'<div class="yahoo-row"><span class="label">{label}</span><span class="val {c}">{val}</span></div>', unsafe_allow_html=True)
 
     @staticmethod
-    def render_main_chart(df: pd.DataFrame, ref_p: float, chart_mode: str, show_indicators: List[str], show_perf_indicators: List[str], period_label: str, interval_code: str):
+    def render_main_chart(df: pd.DataFrame, ref_p: float, chart_mode: str, show_indicators: List[str], show_perf_indicators: List[str], period_label: str, interval_code: str, forecast_data=None, predict_modes=[]):
         # 1. 判斷需要顯示哪些子圖
         h_rsi = "RSI" in show_indicators
         h_macd = "MACD" in show_indicators
@@ -164,6 +164,41 @@ class ChartView:
             fig.add_trace(go.Scatter(x=df.index, y=df['drawdown_series'], fill='tozeroy', line=dict(color='red', width=1), name="回撤"), row=curr_r, col=1)
             fig.update_yaxes(title_text="回撤%", tickformat=".1%", row=curr_r, col=1)
             curr_r += 1
+
+        # 繪製 Prophet 預測線
+        if "Prophet 預測" in predict_modes and forecast_data and "prophet" in forecast_data:
+            p_df = pd.DataFrame(forecast_data["prophet"])
+            if not p_df.empty and 'ds' in p_df.columns:
+                p_df['ds'] = pd.to_datetime(p_df['ds'])
+            
+            # 畫預測中值
+            fig.add_trace(go.Scatter(
+                x=p_df['ds'], y=p_df['yhat'],
+                line=dict(color='rgba(255, 0, 255, 0.8)', width=2, dash='dot'),
+                name="Prophet 趨勢"
+            ), row=1, col=1)
+            
+            # 畫信賴區間 (陰影)
+            fig.add_trace(go.Scatter(
+                x=pd.concat([p_df['ds'], p_df['ds'][::-1]]),
+                y=pd.concat([p_df['yhat_upper'], p_df['yhat_lower'][::-1]]),
+                fill='toself',
+                fillcolor='rgba(255, 0, 255, 0.1)',
+                line=dict(color='rgba(255,255,255,0)'),
+                hoverinfo="skip",
+                name="Prophet 區間"
+            ), row=1, col=1)
+
+        # 繪製 ARIMA 預測線
+        if "ARIMA 預測" in predict_modes and forecast_data and "arima" in forecast_data:
+            a_df = pd.DataFrame(forecast_data["arima"])
+            if not a_df.empty and 'ds' in a_df.columns:
+                a_df['ds'] = pd.to_datetime(a_df['ds'])
+            fig.add_trace(go.Scatter(
+                x=a_df['ds'], y=a_df['yhat'],
+                line=dict(color='rgba(0, 255, 255, 0.8)', width=2, dash='dash'),
+                name="ARIMA 預測"
+            ), row=1, col=1)
 
         # 休市時間處理
         breaks = [dict(bounds=["sat", "mon"])]

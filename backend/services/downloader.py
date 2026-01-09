@@ -57,8 +57,8 @@ class StockDownloader:
                         if len(parts) >= 2:
                             ticker = parts[0].strip()
                             name = parts[1].strip()
-                            # 只要是 4 位數代碼就是一般股票
-                            if len(ticker) == 4 and ticker.isdigit():
+                            # 允許 4-6 位數，且包含字母 (為了支援主動式 ETF)
+                            if 4 <= len(ticker) <= 6:
                                 stock_list.append(f"{ticker}{suffix} - {name}")
             
             final_result = sorted(list(set(stock_list)))

@@ -11,3 +11,6 @@ scikit-learn
 openai
 requests    
 lxml        # 修復抓取清單失敗問題
+statsmodels  # 用於 ARIMA
+prophet      # 用於 Prophet
+plotly     # 用於互動式圖表
