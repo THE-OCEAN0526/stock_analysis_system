@@ -168,26 +168,26 @@ class ChartView:
         # 繪製 Prophet 預測線
         if "Prophet 預測" in predict_modes and forecast_data and "prophet" in forecast_data:
             p_df = pd.DataFrame(forecast_data["prophet"])
-            if not p_df.empty and 'ds' in p_df.columns:
+            if not p_df.empty and 'ds' in p_df.columns and 'yhat' in p_df.columns:
                 p_df['ds'] = pd.to_datetime(p_df['ds'])
             
-            # 畫預測中值
-            fig.add_trace(go.Scatter(
-                x=p_df['ds'], y=p_df['yhat'],
-                line=dict(color='rgba(255, 0, 255, 0.8)', width=2, dash='dot'),
-                name="Prophet 趨勢"
-            ), row=1, col=1)
-            
-            # 畫信賴區間 (陰影)
-            fig.add_trace(go.Scatter(
-                x=pd.concat([p_df['ds'], p_df['ds'][::-1]]),
-                y=pd.concat([p_df['yhat_upper'], p_df['yhat_lower'][::-1]]),
-                fill='toself',
-                fillcolor='rgba(255, 0, 255, 0.1)',
-                line=dict(color='rgba(255,255,255,0)'),
-                hoverinfo="skip",
-                name="Prophet 區間"
-            ), row=1, col=1)
+                # 畫預測中值
+                fig.add_trace(go.Scatter(
+                    x=p_df['ds'], y=p_df['yhat'],
+                    line=dict(color='rgba(255, 0, 255, 0.8)', width=2, dash='dot'),
+                    name="Prophet 趨勢"
+                ), row=1, col=1)
+                
+                # 畫信賴區間 (陰影)
+                fig.add_trace(go.Scatter(
+                    x=pd.concat([p_df['ds'], p_df['ds'][::-1]]),
+                    y=pd.concat([p_df['yhat_upper'], p_df['yhat_lower'][::-1]]),
+                    fill='toself',
+                    fillcolor='rgba(255, 0, 255, 0.1)',
+                    line=dict(color='rgba(255,255,255,0)'),
+                    hoverinfo="skip",
+                    name="Prophet 區間"
+                ), row=1, col=1)
 
         # 繪製 ARIMA 預測線
         if "ARIMA 預測" in predict_modes and forecast_data and "arima" in forecast_data:
