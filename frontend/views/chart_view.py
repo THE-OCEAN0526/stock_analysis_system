@@ -63,7 +63,7 @@ class ChartView:
             (s1 if i % 2 == 0 else s2).markdown(f'<div class="yahoo-row"><span class="label">{label}</span><span class="val {c}">{val}</span></div>', unsafe_allow_html=True)
 
     @staticmethod
-    def render_main_chart(df: pd.DataFrame, ref_p: float, chart_mode: str, show_indicators: List[str], show_perf_indicators: List[str], period_label: str, interval_code: str, forecast_data=None, predict_modes=[]):
+    def render_main_chart(df: pd.DataFrame, ref_p: float, chart_mode: str, show_indicators: List[str], show_perf_indicators: List[str], period_label: str, interval_code: str, forecast_data=None, predict_modes=[], ml_subcharts=[]):
         """繪製主圖表與所有技術指標/預測線"""
         
         # --- 修正 A：統一移除時區，確保與 Prophet 預測數據對齊 ---
@@ -76,8 +76,11 @@ class ChartView:
         h_vol = "波動率" in show_indicators
         h_cum = "累積報酬" in show_perf_indicators
         h_dd = "水下回撤圖" in show_perf_indicators
+
+        # 機器學習子圖數
+        ml_rows = len(ml_subcharts)
         
-        rows = 1 + h_rsi + h_macd + h_vol + h_cum + h_dd
+        rows = 1 + h_rsi + h_macd + h_vol + h_cum + h_dd + ml_rows
         main_h = 0.45
         sub_h = (1 - main_h) / (rows - 1) if rows > 1 else 0
         row_heights = [main_h] + [sub_h] * (rows - 1)
@@ -174,6 +177,23 @@ class ChartView:
             fig.add_trace(go.Scatter(x=df.index, y=df['drawdown_series'], fill='tozeroy', line=dict(color='red', width=1), name="回撤"), row=curr_r, col=1)
             fig.update_yaxes(title_text="回撤%", tickformat=".1%", row=curr_r, col=1)
             curr_r += 1
+        
+        # 2. 繪製機器學習獨立子圖
+        for ml_item in ml_subcharts:
+            if ml_item == "明日看漲機率" and "prob_up" in df.columns:
+                fig.add_trace(go.Scatter(x=df.index, y=df['prob_up'], fill='tozeroy', name="看漲機率"), row=curr_r, col=1)
+                fig.add_hline(y=0.5, line_dash="dash", line_color="gray", row=curr_r, col=1)
+                fig.update_yaxes(title_text="漲跌機率", tickformat=".0%", range=[0, 1], row=curr_r, col=1)
+            
+            elif ml_item == "K-Means 分群狀態" and "cluster" in df.columns:
+                fig.add_trace(go.Bar(x=df.index, y=df['cluster'], name="市場分群"), row=curr_r, col=1)
+                fig.update_yaxes(title_text="分群標籤", row=curr_r, col=1)
+
+            elif ml_item == "線性回歸誤差" and "reg_error" in df.columns:
+                fig.add_trace(go.Bar(x=df.index, y=df['reg_error'], name="預測誤差"), row=curr_r, col=1)
+                fig.update_yaxes(title_text="誤差值", row=curr_r, col=1)
+
+            curr_r += 1
 
         # --- 修正 C：渲染預測數據 ---
         # 繪製 Prophet 預測線與信賴區間
@@ -205,6 +225,63 @@ class ChartView:
                     line=dict(color='rgba(0, 255, 255, 0.8)', width=2, dash='dash'),
                     name="ARIMA 預測"
                 ), row=1, col=1)
+
+        reg_models = ["線性回歸", "決策樹回歸", "隨機森林回歸"]
+        colors = {
+            "線性回歸": "rgba(255, 165, 0, 0.8)",    # 橘色
+            "決策樹回歸": "rgba(0, 200, 0, 0.8)",     # 綠色
+            "隨機森林回歸": "rgba(255, 69, 0, 0.8)"  # 橘紅色
+        }
+        
+
+        for m_name in reg_models:
+            if m_name in predict_modes and forecast_data and m_name in forecast_data:
+                m_res = forecast_data[m_name]
+                
+                # 1. 彙整所有數據點 (歷史 + 未來)
+                all_points = []
+                if "history" in m_res: all_points.extend(m_res["history"])
+                if "future" in m_res: all_points.extend(m_res["future"])
+                
+                if all_points:
+                    full_df = pd.DataFrame(all_points)
+                    full_df['ds'] = pd.to_datetime(full_df['ds'])
+                    
+                    # 2. 用單一 Scatter 畫出一整條長虛線
+                    fig.add_trace(go.Scatter(
+                        x=full_df['ds'], y=full_df['yhat'],
+                        line=dict(color=colors.get(m_name), width=2, dash='dash'),
+                        name=f"{m_name} 預測軌跡"
+                    ), row=1, col=1)
+
+        cls_models = ["邏輯回歸", "SVM 分類"]
+        
+        
+        for c_name in cls_models:
+            # 修改：只要 forecast_data 裡有該模型的資料就畫，不強求 predict_modes 也要有
+            if forecast_data and c_name in forecast_data:
+                c_res = forecast_data[c_name]
+                
+                # 畫出看漲訊號 (綠色向上三角形 - 放在收盤價下方)
+                if "up_signals" in c_res and c_res["up_signals"]:
+                    up_dates = pd.to_datetime(c_res["up_signals"])
+                    sig_up = df[df.index.isin(up_dates)]
+                    fig.add_trace(go.Scatter(
+                        x=sig_up.index, y=sig_up['low'] * 0.98,
+                        mode='markers', name=f"{c_name} 看漲",
+                        marker=dict(symbol='triangle-up', size=9, color='#00ff00', line=dict(width=1, color='white'))
+                    ), row=1, col=1)
+
+                # 畫出看跌訊號 (紅色向下三角形 - 放在收盤價上方)
+                if "down_signals" in c_res and c_res["down_signals"]:
+                    down_dates = pd.to_datetime(c_res["down_signals"])
+                    sig_down = df[df.index.isin(down_dates)]
+                    fig.add_trace(go.Scatter(
+                        x=sig_down.index, y=sig_down['high'] * 1.02,
+                        mode='markers', name=f"{c_name} 看跌",
+                        marker=dict(symbol='triangle-down', size=9, color='#ff0000', line=dict(width=1, color='white'))
+                    ), row=1, col=1)
+
 
         # 處理休市時間
         breaks = [dict(bounds=["sat", "mon"])]

@@ -25,6 +25,7 @@ class SidebarView:
         # 2. 圖表樣式
         chart_mode = st.sidebar.radio("圖表樣式", ["走勢圖", "K線圖"])
         
+        st.sidebar.write("**獨立分析子圖**")
         # 3. 技術指標
         indicators = st.sidebar.multiselect(
             "顯示指標", 
@@ -38,22 +39,59 @@ class SidebarView:
             default=[]
         )
 
-        # 4. 週期設定
-        short_p = st.sidebar.slider("短期均線週期", 5, 50, 10)
-        long_p = st.sidebar.slider("長期均線週期", 20, 100, 50)
+        with st.sidebar.expander("機器學習分析子圖"):
+            ml_reg_sub = st.multiselect("回歸分析 (殘差/誤差圖)", ["線性回歸誤差", "隨機森林誤差"])
+            ml_cls_sub = st.multiselect("分類預測 (漲跌機率)", ["明日看漲機率"])
+            ml_un_sub = st.multiselect("模式識別 (分群/降維)", ["K-Means 分群狀態", "PCA 特徵成分"])
 
-        predict_modes = st.sidebar.multiselect(
-            "時間序列預測",
+        ml_subcharts = ml_reg_sub + ml_cls_sub + ml_un_sub
+
+        st.sidebar.markdown("---")
+
+        # 3. 核心預測與分析分類
+        # A. 傳統時間序列分析
+        ts_modes = st.sidebar.multiselect(
+            "傳統時間序列分析",
             ["Prophet 預測", "ARIMA 預測"],
-            default=[]
+            help="基於數據本身的季節性與週期規律進行統計預測"
         )
+
+        # B. 機器學習模組 (分類收納)
+        with st.sidebar.expander("機器學習分析模組"):
+            st.write("**監督式學習 (回歸)**")
+            ml_reg_modes = st.multiselect(
+                "選擇回歸模型 (預測價格)",
+                ["線性回歸", "決策樹回歸", "隨機森林回歸"]
+            )
+
+            st.write("**監督式學習 (分類)**")
+            ml_cls_modes = st.multiselect(
+                "選擇分類模型 (預測漲跌)",
+                ["邏輯回歸", "SVM 分類"]
+            )
+            
+            st.write("**非監督式學習**")
+            ml_un_modes = st.multiselect(
+                "模式識別/特徵優化",
+                ["K-Means 聚類", "PCA 降維分析"]
+            )
+        
+        # 彙整所有選中的模式
+        all_predict_modes = ts_modes + ml_reg_modes + ml_cls_modes + ml_un_modes
+
             
         return {
             "ticker": ticker,
             "chart_mode": chart_mode,
             "indicators": indicators,
             "perf_indicators": perf_indicators,
-            "short_p": short_p,
-            "long_p": long_p,
-            "predict_modes": predict_modes
+            "short_p": st.sidebar.slider("短期均線週期", 5, 50, 10),
+            "long_p": st.sidebar.slider("長期均線週期", 20, 100, 50),
+            "predict_modes": all_predict_modes,
+            "ml_subcharts": ml_subcharts,
+            "ml_details": {
+                "regression": ml_reg_modes,
+                "classification": ml_cls_modes,
+                "unsupervised": ml_un_modes
+            }
         }

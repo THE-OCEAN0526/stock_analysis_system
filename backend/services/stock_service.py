@@ -27,7 +27,8 @@ class StockService:
         interval: str = "1d", 
         short_p: int = 10, 
         long_p: int = 50,
-        predict_modes=[]
+        predict_modes=[],
+        ml_subcharts=[]
     ) -> Dict[str, Any]:
         
         """
@@ -85,12 +86,42 @@ class StockService:
 
 
             forecast_results = {}
-            # 2. 只有在用戶真的想看預測時才進行計算
             if interval == "1d" and len(chart_df) > 30:
-                if "Prophet 預測" in predict_modes:
-                    forecast_results["prophet"] = StockForecaster.predict_prophet(chart_df)
-                if "ARIMA 預測" in predict_modes:
-                    forecast_results["arima"] = StockForecaster.predict_arima(chart_df)
+                # 1. 處理回歸模型 (預測線)
+                for m in ["線性回歸", "決策樹回歸", "隨機森林回歸"]:
+                    if m in predict_modes:
+                        forecast_results[m] = StockForecaster.predict_regression(chart_df, m)
+                
+                # 2. 處理分類模型 (漲跌訊號 & 機率子圖)
+                # 只要有選「明日看漲機率」或「分類器線條」，就執行分類計算
+                target_cls = ["邏輯回歸", "SVM 分類"]
+                active_cls = [m for m in target_cls if m in predict_modes]
+                
+                # 如果使用者選了機率圖但沒選模型，預設用邏輯回歸
+                if "明日看漲機率" in ml_subcharts and not active_cls:
+                    active_cls = ["邏輯回歸"]
+                
+                for cls_m in active_cls:
+                    cls_res = StockForecaster.predict_classification(chart_df, cls_m)
+                    forecast_results[cls_m] = cls_res # 存入結果
+                    
+                    # 只有在勾選子圖時，才把機率填入 DataFrame
+                    if "明日看漲機率" in ml_subcharts:
+                        prob_map = {item['ds']: item['prob'] for item in cls_res['history_probs']}
+                        chart_df['prob_up'] = chart_df.index.strftime('%Y-%m-%d').map(prob_map).fillna(0.5)
+
+                # 3. 處理非監督式學習 (子圖)
+                if "K-Means 分群狀態" in ml_subcharts:
+                    res = StockForecaster.analyze_unsupervised(chart_df, "K-Means 聚類")
+                    if res:
+                        cluster_map = dict(zip(res['ds'], res['labels']))
+                        chart_df['cluster'] = chart_df.index.strftime('%Y-%m-%d').map(cluster_map).fillna(0)
+
+                if "PCA 特徵成分" in ml_subcharts:
+                    res = StockForecaster.analyze_unsupervised(chart_df, "PCA 降維分析")
+                    if res:
+                        pca_map = dict(zip(res['ds'], res['values']))
+                        chart_df['pca_val'] = chart_df.index.strftime('%Y-%m-%d').map(pca_map).fillna(0)
 
 
             # 處理 JSON 不支援的 NaN 值

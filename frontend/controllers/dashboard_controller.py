@@ -18,7 +18,8 @@ class DashboardController:
         interval: str, 
         short_p: int, 
         long_p: int,
-        predict_modes=[]
+        predict_modes=[],
+        ml_subcharts=[]
     ) -> Optional[Dict[str, Any]]:
         """
         向後端 API 請求分析數據。
@@ -29,7 +30,8 @@ class DashboardController:
                 "interval": interval,
                 "short_p": short_p,
                 "long_p": long_p,
-                "predict_modes": predict_modes
+                "predict_modes": predict_modes,
+                "ml_subcharts": ml_subcharts
             }
             response = requests.get(
                 f"{self.backend_url}/api/v1/stock/{ticker}", 
