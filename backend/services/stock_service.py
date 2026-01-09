@@ -87,6 +87,11 @@ class StockService:
 
             forecast_results = {}
             if interval == "1d" and len(chart_df) > 30:
+                if "Prophet 預測" in predict_modes:
+                    forecast_results["prophet"] = StockForecaster.predict_prophet(chart_df)
+                if "ARIMA 預測" in predict_modes:
+                    forecast_results["arima"] = StockForecaster.predict_arima(chart_df)
+                    
                 # 1. 處理回歸模型 (預測線)
                 for m in ["線性回歸", "決策樹回歸", "隨機森林回歸"]:
                     if m in predict_modes:

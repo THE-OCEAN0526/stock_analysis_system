@@ -15,7 +15,8 @@ async def get_stock_analysis(
     interval: str = Query("1d", description="資料密度 (例如: 1m, 15m, 1d)"),
     short_p: int = Query(10, description="短期均線週期"),
     long_p: int = Query(50, description="長期均線週期"),
-    predict_modes: list[str] = Query([])
+    predict_modes: list[str] = Query([]),
+    ml_subcharts: list[str] = Query([])
 ):
     print(f"🚀 [DEBUG] 收到請求，目標股票: {ticker}")
     """
@@ -32,7 +33,8 @@ async def get_stock_analysis(
             interval=interval,
             short_p=short_p,
             long_p=long_p,
-            predict_modes=predict_modes
+            predict_modes=predict_modes,
+            ml_subcharts=ml_subcharts
         )
         
         # 檢查 Service 執行的結果狀態
